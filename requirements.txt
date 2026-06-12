@@ -1,7 +1,7 @@
 flask
 flask-cors
-xgboost
-scikit-learn
+xgboost==2.1.1
+scikit-learn==1.6.1
 imbalanced-learn
 shap
 pandas
