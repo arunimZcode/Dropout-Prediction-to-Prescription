@@ -140,6 +140,10 @@ def predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify({"status": "ok", "service": "dropout-predictor"})
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "threshold": round(float(threshold), 3)})
