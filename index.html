@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Dropout Risk Predictor</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F7F6F2;--surface:#fff;--border:#E4E2DB;
+  --text:#1A1A18;--muted:#6B6B65;--faint:#9B9B94;
+  --green:#2D5F3F;--green-light:#EBF3EE;
+  --red:#C0392B;--red-light:#FDECEA;
+  --amber:#B7600A;--amber-light:#FEF3E7;
+  --blue:#1A4A7A;--blue-light:#EAF0F8;
+  --radius:10px;--shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
+
+/* HEADER */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
+.logo-dot{width:8px;height:8px;background:var(--green);border-radius:50%}
+.header-actions{display:flex;gap:8px;align-items:center}
+.class-btn{padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;gap:6px}
+.class-btn:hover{opacity:.85}
+.header-badge{font-size:11px;background:var(--green-light);color:var(--green);padding:3px 10px;border-radius:20px;font-weight:500}
+
+/* VIEWS */
+.view{display:none}.view.active{display:block}
+.main{max-width:1040px;margin:0 auto;padding:2rem 1.5rem 4rem}
+.page-title{font-family:'DM Serif Display',serif;font-size:28px;font-weight:400;margin-bottom:4px}
+.page-sub{color:var(--muted);font-size:14px;margin-bottom:2rem}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:1fr 400px;gap:1.5rem;align-items:start}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:1rem}
+.card:last-child{margin-bottom:0}
+.card-header{padding:.875rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.card-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.card-title{font-weight:600;font-size:13px}
+.card-body{padding:1.25rem}
+
+/* FORM */
+.sec-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:1rem 0 .75rem}
+.sec-label:first-child{margin-top:0}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg3{grid-template-columns:1fr 1fr 1fr}
+.ff{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;font-weight:500;color:var(--muted)}
+.field input,.field select{height:36px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);outline:none;transition:border-color .15s;width:100%}
+.field input:focus,.field select:focus{border-color:var(--green);background:#fff}
+
+.submit-btn{width:100%;height:42px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;margin-top:1.25rem;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.submit-btn:hover{opacity:.88}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* RESULTS */
+.hidden{display:none}
+.risk-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:6px}
+.risk-high{background:var(--red-light);color:var(--red)}
+.risk-low{background:var(--green-light);color:var(--green)}
+.prob-number{font-family:'DM Serif Display',serif;font-size:42px;line-height:1;margin:.5rem 0 .25rem}
+.prob-high{color:var(--red)}.prob-low{color:var(--green)}
+.risk-bar-bg{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin:8px 0}
+.risk-bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.summary-box{background:var(--bg);border-radius:6px;padding:.75rem 1rem;font-size:13px;color:var(--muted);line-height:1.6;margin:1rem 0}
+.factor-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.factor-item:last-child{border-bottom:none}
+.fdot{width:6px;height:6px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.dot-r{background:var(--red)}.dot-p{background:var(--green)}
+.sug-card{border-radius:6px;padding:.75rem 1rem;margin-bottom:8px;border-left:3px solid;font-size:13px}
+.sug-s{background:var(--blue-light);border-color:var(--blue)}
+.sug-f{background:var(--green-light);border-color:var(--green)}
+.sug-cat{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
+.sug-s .sug-cat{color:var(--blue)}.sug-f .sug-cat{color:var(--green)}
+.sug-text{color:var(--muted);line-height:1.5}
+.toggle-row{display:flex;gap:6px;margin-bottom:1rem}
+.tbtn{padding:4px 12px;font-size:12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
+.tbtn.ts{background:var(--blue-light);color:var(--blue);border-color:transparent}
+.tbtn.tf{background:var(--green-light);color:var(--green);border-color:transparent}
+.empty-state{text-align:center;padding:2.5rem 1rem;color:var(--faint);font-size:13px}
+.empty-icon{font-size:28px;margin-bottom:8px}
+
+/* TIMELINE */
+.timeline-wrap{margin-top:1rem}
+.timeline-title{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:.75rem}
+.scenario{margin-bottom:10px}
+.scenario-label{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:4px}
+.scenario-name{color:var(--text);font-weight:500}
+.scenario-pct{font-weight:600}
+.s-bar-bg{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.s-bar-fill{height:100%;border-radius:3px;transition:width .8s ease}
+.scenario-delta{font-size:11px;color:var(--green);margin-top:2px}
+.scenario-delta.worse{color:var(--red)}
+.divider{border:none;border-top:1px solid var(--border);margin:1rem 0}
+
+/* CLASS ANALYSIS VIEW */
+.class-main{max-width:1100px;margin:0 auto;padding:2rem 1.5rem 4rem}
+.back-btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:inherit;margin-bottom:1.5rem;padding:0}
+.back-btn:hover{color:var(--text)}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:3rem;text-align:center;cursor:pointer;transition:border-color .15s;background:var(--surface)}
+.upload-zone:hover{border-color:var(--green)}
+.upload-zone input{display:none}
+.upload-icon{font-size:32px;margin-bottom:12px}
+.upload-text{font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px}
+.upload-sub{font-size:12px;color:var(--faint)}
+.upload-btn-label{display:inline-block;margin-top:12px;padding:8px 20px;background:var(--green);color:#fff;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:1rem;display:none}
+.progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width .3s}
+
+/* HEATMAP */
+.heatmap-wrap{margin-top:2rem}
+.heatmap-controls{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
+.heatmap-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center}
+.stat-value{font-family:'DM Serif Display',serif;font-size:28px}
+.stat-label{font-size:11px;color:var(--faint);margin-top:2px}
+.stat-high .stat-value{color:var(--red)}
+.stat-med .stat-value{color:var(--amber)}
+.stat-low .stat-value{color:var(--green)}
+.heatmap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.student-tile{border-radius:8px;padding:.875rem;border:1px solid transparent;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative}
+.student-tile:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.tile-high{background:var(--red-light);border-color:#f5c6c2}
+.tile-med{background:var(--amber-light);border-color:#f5ddb8}
+.tile-low{background:var(--green-light);border-color:#c2ddc9}
+.tile-name{font-weight:600;font-size:13px;margin-bottom:2px}
+.tile-prob{font-size:20px;font-weight:700;font-family:'DM Serif Display',serif}
+.tile-high .tile-prob{color:var(--red)}
+.tile-med .tile-prob{color:var(--amber)}
+.tile-low .tile-prob{color:var(--green)}
+.tile-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.tile-high .tile-label{color:var(--red)}
+.tile-med .tile-label{color:var(--amber)}
+.tile-low .tile-label{color:var(--green)}
+.tile-factors{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
+.sort-select{height:32px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text);outline:none}
+.filter-row{display:flex;gap:6px}
+.fbtn{padding:4px 10px;font-size:11px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-family:inherit;font-weight:500}
+.fbtn.fa{background:var(--text);color:#fff;border-color:transparent}
+.fbtn.fh{background:var(--red-light);color:var(--red);border-color:transparent}
+.fbtn.fm{background:var(--amber-light);color:var(--amber);border-color:transparent}
+.fbtn.fl{background:var(--green-light);color:var(--green);border-color:transparent}
+.legend{display:flex;gap:16px;align-items:center;font-size:11px;color:var(--muted)}
+.leg-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>Student Dropout Risk Predictor</div>
+  <div class="header-actions">
+    <span class="header-badge">Faculty Portal</span>
+    <button class="class-btn" onclick="showView('class')">📊 Class Analysis</button>
+  </div>
+</header>
+
+<!-- ═══════════════════ SINGLE STUDENT VIEW ═══════════════════ -->
+<div class="view active" id="view-single">
+<div class="main">
+  <h1 class="page-title">Risk Assessment</h1>
+  <p class="page-sub">Enter student details to predict dropout risk and see how interventions could change their trajectory.</p>
+
+  <div class="layout">
+    <!-- FORM -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:var(--green-light)">📋</div>
+        <span class="card-title">Student Profile</span>
+      </div>
+      <div class="card-body">
+        <div class="sec-label">Personal details</div>
+        <div class="fg">
+          <div class="field ff"><label>Student name</label><input type="text" id="student_name" placeholder="Full name"/></div>
+          <div class="field"><label>Age</label><input type="number" id="age" min="15" max="22" value="17"/></div>
+          <div class="field"><label>Gender</label><select id="gender"><option value="M">Male</option><option value="F">Female</option></select></div>
+          <div class="field"><label>Address</label><select id="address"><option value="U">Urban</option><option value="R">Rural</option></select></div>
+          <div class="field"><label>Guardian</label><select id="guardian"><option value="mother">Mother</option><option value="father">Father</option><option value="other">Other</option></select></div>
+        </div>
+
+        <div class="sec-label">Academic</div>
+        <div class="fg fg3">
+          <div class="field"><label>Past failures</label><input type="number" id="failures" min="0" max="4" value="0"/></div>
+          <div class="field"><label>Absences</label><input type="number" id="absences" min="0" max="93" value="0"/></div>
+          <div class="field"><label>Study time (1–4)</label><input type="number" id="study_time" min="1" max="4" value="2"/></div>
+          <div class="field"><label>School support</label><select id="sch_support"><option value="no">No</option><option value="yes">Yes</option></select></div>
+          <div class="field"><label>Higher education</label><select id="higher_edu"><option value="yes">Yes</option><option value="no">No</option></select></div>
+          <div class="field"><label>Extra classes</label><select id="extra_paid"><option value="no">No</option><option value="yes">Yes</option></select></div>
+        </div>
+
+        <div class="sec-label">Family</div>
+        <div class="fg fg3">
+          <div class="field"><label>Family support</label><select id="fam_support"><option value="yes">Yes</option><option value="no">No</option></select></div>
+          <div class="field"><label>Family relation (1–5)</label><input type="number" id="fam_rel" min="1" max="5" value="3"/></div>
+          <div class="field"><label>Mother edu (0–4)</label><input type="number" id="mother_edu" min="0" max="4" value="2"/></div>
+          <div class="field"><label>Father edu (0–4)</label><input type="number" id="father_edu" min="0" max="4" value="2"/></div>
+          <div class="field"><label>Parent status</label><select id="par_status"><option value="T">Together</option><option value="A">Apart</option></select></div>
+          <div class="field"><label>Family size</label><select id="fam_size"><option value="GT3">More than 3</option><option value="LE3">3 or less</option></select></div>
+        </div>
+
+        <div class="sec-label">Lifestyle</div>
+        <div class="fg fg3">
+          <div class="field"><label>Going out (1–5)</label><input type="number" id="going_out" min="1" max="5" value="2"/></div>
+          <div class="field"><label>Weekend alcohol (1–5)</label><input type="number" id="walc" min="1" max="5" value="1"/></div>
+          <div class="field"><label>Weekday alcohol (1–5)</label><input type="number" id="dalc" min="1" max="5" value="1"/></div>
+          <div class="field"><label>Health (1–5)</label><input type="number" id="health" min="1" max="5" value="3"/></div>
+          <div class="field"><label>Travel time (1–4)</label><input type="number" id="travel_time" min="1" max="4" value="1"/></div>
+          <div class="field"><label>Free time (1–5)</label><input type="number" id="free_time" min="1" max="5" value="3"/></div>
+          <div class="field"><label>Activities</label><select id="activities"><option value="no">No</option><option value="yes">Yes</option></select></div>
+          <div class="field"><label>Internet access</label><select id="internet"><option value="yes">Yes</option><option value="no">No</option></select></div>
+          <div class="field"><label>In relationship</label><select id="romantic"><option value="no">No</option><option value="yes">Yes</option></select></div>
+        </div>
+
+        <button class="submit-btn" id="submitBtn" onclick="predict()">
+          <div class="spinner" id="spinner"></div>
+          <span id="btnText">Predict dropout risk</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div>
+      <!-- Risk Score -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:var(--red-light)">📊</div>
+          <span class="card-title">Risk Assessment</span>
+        </div>
+        <div class="card-body">
+          <div id="emptyState" class="empty-state"><div class="empty-icon">🎓</div>Fill in the student profile and click predict.</div>
+          <div id="results" class="hidden">
+            <div id="riskBadge" class="risk-badge"></div>
+            <div id="probNumber" class="prob-number"></div>
+            <div style="font-size:12px;color:var(--faint);margin-bottom:.5rem">dropout probability</div>
+            <div class="risk-bar-bg"><div class="risk-bar-fill" id="riskBar"></div></div>
+            <div class="summary-box" id="summaryBox"></div>
+            <div class="sec-label">Key risk factors</div>
+            <div id="factorsList"></div>
+
+            <hr class="divider">
+
+            <!-- INTERVENTION TIMELINE -->
+            <div class="timeline-wrap">
+              <div class="timeline-title">📈 What if interventions are applied?</div>
+              <div id="timelineScenarios"></div>
+              <div style="font-size:11px;color:var(--faint);margin-top:.5rem">Projections based on model sensitivity to each factor.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suggestions -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:var(--blue-light)">💡</div>
+          <span class="card-title">Interventions</span>
+        </div>
+        <div class="card-body">
+          <div id="emptyState2" class="empty-state"><div class="empty-icon">💬</div>Suggestions will appear after prediction.</div>
+          <div id="suggestions" class="hidden">
+            <div class="toggle-row">
+              <button class="tbtn ts" id="btnStudent" onclick="filterSug('student')">For student</button>
+              <button class="tbtn" id="btnFaculty" onclick="filterSug('faculty')">For faculty</button>
+            </div>
+            <div id="sugList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════ CLASS ANALYSIS VIEW ═══════════════════ -->
+<div class="view" id="view-class">
+<div class="class-main">
+  <button class="back-btn" onclick="showView('single')">← Back to single student</button>
+  <h1 class="page-title">Class Analysis</h1>
+  <p class="page-sub">Upload a CSV of your class to see every student's dropout risk at a glance.</p>
+
+  <div class="card" id="uploadCard">
+    <div class="card-body">
+      <div class="upload-zone" onclick="document.getElementById('csvFile').click()">
+        <input type="file" id="csvFile" accept=".csv" onchange="handleCSV(this)">
+        <div class="upload-icon">📂</div>
+        <div class="upload-text">Upload class CSV file</div>
+        <div class="upload-sub">Must include the same columns as the training dataset</div>
+        <label class="upload-btn-label">Choose file</label>
+      </div>
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div id="uploadStatus" style="text-align:center;margin-top:1rem;font-size:13px;color:var(--muted)"></div>
+    </div>
+  </div>
+
+  <div class="heatmap-wrap hidden" id="heatmapWrap">
+    <div class="heatmap-stats" id="heatmapStats"></div>
+    <div class="heatmap-controls">
+      <div class="filter-row">
+        <button class="fbtn fa" onclick="filterTiles('all',this)">All</button>
+        <button class="fbtn" onclick="filterTiles('high',this)" style="background:var(--red-light);color:var(--red);border-color:transparent">🔴 High risk</button>
+        <button class="fbtn" onclick="filterTiles('med',this)" style="background:var(--amber-light);color:var(--amber);border-color:transparent">🟡 Moderate</button>
+        <button class="fbtn" onclick="filterTiles('low',this)" style="background:var(--green-light);color:var(--green);border-color:transparent">🟢 Low risk</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--muted)">Sort by</span>
+        <select class="sort-select" onchange="sortTiles(this.value)">
+          <option value="risk-desc">Highest risk first</option>
+          <option value="risk-asc">Lowest risk first</option>
+          <option value="name">Name A–Z</option>
+        </select>
+      </div>
+    </div>
+    <div class="heatmap-grid" id="heatmapGrid"></div>
+  </div>
+</div>
+</div>
+
+<script>
+const API_URL = "https://dropout-prediction-to-prescription.onrender.com/predict"; // REPLACE THIS
+
+let allSuggestions = [], currentFilter = 'student';
+let classResults = [], tileFilter = 'all';
+
+// ── View switcher ──────────────────────────────────────
+function showView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+}
+
+// ── Suggestion filter ──────────────────────────────────
+function filterSug(type) {
+  currentFilter = type;
+  document.getElementById('btnStudent').className = 'tbtn' + (type==='student'?' ts':'');
+  document.getElementById('btnFaculty').className = 'tbtn' + (type==='faculty'?' tf':'');
+  renderSuggestions();
+}
+function renderSuggestions() {
+  const list = document.getElementById('sugList');
+  list.innerHTML = '';
+  allSuggestions.filter(s=>s.type===currentFilter).forEach(s=>{
+    const d = document.createElement('div');
+    d.className = 'sug-card ' + (s.type==='student'?'sug-s':'sug-f');
+    d.innerHTML = `<div class="sug-cat">${s.category}</div><div class="sug-text">${s.action}</div>`;
+    list.appendChild(d);
+  });
+}
+
+// ── Build payload ──────────────────────────────────────
+function g(id){return document.getElementById(id).value}
+function buildPayload(overrides={}) {
+  return Object.assign({
+    School:"GP", Gender:g('gender'), Age:parseInt(g('age')), Address:g('address'),
+    Family_Size:g('fam_size'), Parental_Status:g('par_status'),
+    Mother_Education:parseInt(g('mother_edu')), Father_Education:parseInt(g('father_edu')),
+    Mother_Job:"other", Father_Job:"other", Reason_for_Choosing_School:"course",
+    Guardian:g('guardian'), Travel_Time:parseInt(g('travel_time')),
+    Study_Time:parseInt(g('study_time')), Number_of_Failures:parseInt(g('failures')),
+    School_Support:g('sch_support'), Family_Support:g('fam_support'),
+    Extra_Paid_Class:g('extra_paid'), Extra_Curricular_Activities:g('activities'),
+    Attended_Nursery:"yes", Wants_Higher_Education:g('higher_edu'),
+    Internet_Access:g('internet'), In_Relationship:g('romantic'),
+    Family_Relationship:parseInt(g('fam_rel')), Free_Time:parseInt(g('free_time')),
+    Going_Out:parseInt(g('going_out')), Weekend_Alcohol_Consumption:parseInt(g('walc')),
+    Weekday_Alcohol_Consumption:parseInt(g('dalc')), Health_Status:parseInt(g('health')),
+    Number_of_Absences:parseInt(g('absences'))
+  }, overrides);
+}
+
+// ── Single prediction ──────────────────────────────────
+async function predict() {
+  const btn=document.getElementById('submitBtn');
+  const spinner=document.getElementById('spinner');
+  const btnText=document.getElementById('btnText');
+  btn.disabled=true; spinner.style.display='block'; btnText.textContent='Analysing...';
+
+  try {
+    const payload = buildPayload();
+    const res = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const result = await res.json();
+    renderResults(result, payload);
+    await renderTimeline(payload, result.probability);
+  } catch(err) {
+    document.getElementById('summaryBox').textContent = 'Error: ' + err.message;
+    document.getElementById('results').classList.remove('hidden');
+    document.getElementById('emptyState').style.display='none';
+  }
+
+  btn.disabled=false; spinner.style.display='none'; btnText.textContent='Predict dropout risk';
+}
+
+function renderResults(result, payload) {
+  const prob = Math.round(result.probability*100);
+  const isHigh = result.label==='Dropout Risk';
+  const color = isHigh?'#C0392B':'#2D5F3F';
+
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('emptyState2').style.display='none';
+  document.getElementById('results').classList.remove('hidden');
+  document.getElementById('suggestions').classList.remove('hidden');
+
+  document.getElementById('riskBadge').textContent = result.label;
+  document.getElementById('riskBadge').className = 'risk-badge '+(isHigh?'risk-high':'risk-low');
+  document.getElementById('probNumber').textContent = prob+'%';
+  document.getElementById('probNumber').className = 'prob-number '+(isHigh?'prob-high':'prob-low');
+  document.getElementById('riskBar').style.width = prob+'%';
+  document.getElementById('riskBar').style.background = color;
+  document.getElementById('summaryBox').textContent = result.risk_summary;
+
+  const fl=document.getElementById('factorsList'); fl.innerHTML='';
+  result.top_risk_factors.forEach(f=>{
+    const d=document.createElement('div'); d.className='factor-item';
+    d.innerHTML=`<div class="fdot dot-r"></div><span>${f.replace(/_/g,' ')}</span>`; fl.appendChild(d);
+  });
+  result.top_protective_factors.forEach(f=>{
+    const d=document.createElement('div'); d.className='factor-item';
+    d.innerHTML=`<div class="fdot dot-p"></div><span style="color:var(--faint)">${f.replace(/_/g,' ')}</span>`; fl.appendChild(d);
+  });
+
+  allSuggestions=[];
+  result.student_suggestions.forEach(s=>allSuggestions.push({type:'student',category:s.category,action:s.action}));
+  result.faculty_suggestions.forEach(s=>allSuggestions.push({type:'faculty',category:s.category,action:s.action}));
+  renderSuggestions();
+}
+
+// ── Intervention Timeline ──────────────────────────────
+async function renderTimeline(payload, baseProbability) {
+  const wrap = document.getElementById('timelineScenarios');
+  wrap.innerHTML = '<div style="font-size:12px;color:var(--faint);padding:.5rem 0">Calculating scenarios…</div>';
+
+  const scenarios = [
+    { label:'No intervention (current)', overrides:{}, color:'#C0392B', base:true },
+    { label:'Study time improves to 3', overrides:{Study_Time:3} },
+    { label:'Absences reduce by half', overrides:{Number_of_Absences:Math.max(0,Math.round(payload.Number_of_Absences/2))} },
+    { label:'School support added', overrides:{School_Support:'yes'} },
+    { label:'All interventions applied', overrides:{Study_Time:3,Number_of_Absences:Math.max(0,Math.round(payload.Number_of_Absences/2)),School_Support:'yes',Wants_Higher_Education:'yes'} },
+  ];
+
+  const results = await Promise.all(scenarios.map(async s => {
+    try {
+      const p = Object.assign({}, payload, s.overrides);
+      const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+      const d = await r.json();
+      return { ...s, prob: Math.round(d.probability*100) };
+    } catch { return { ...s, prob: Math.round(baseProbability*100) }; }
+  }));
+
+  wrap.innerHTML='';
+  const baseProb = results[0].prob;
+
+  results.forEach(s => {
+    const color = s.base ? '#C0392B' : (s.prob < baseProb ? '#2D5F3F' : '#B7600A');
+    const delta = s.base ? '' : (s.prob < baseProb ? `↓ ${baseProb-s.prob}% reduction` : `↑ ${s.prob-baseProb}% increase`);
+    const deltaClass = (!s.base && s.prob >= baseProb) ? 'worse' : '';
+
+    wrap.innerHTML += `
+      <div class="scenario">
+        <div class="scenario-label">
+          <span class="scenario-name">${s.label}</span>
+          <span class="scenario-pct" style="color:${color}">${s.prob}%</span>
+        </div>
+        <div class="s-bar-bg"><div class="s-bar-fill" style="width:${s.prob}%;background:${color}"></div></div>
+        ${delta ? `<div class="scenario-delta ${deltaClass}">${delta}</div>` : ''}
+      </div>`;
+  });
+}
+
+// ── CSV Class Analysis ─────────────────────────────────
+function handleCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const rows = parseCSV(e.target.result);
+    if (!rows.length) { document.getElementById('uploadStatus').textContent='No data found in CSV.'; return; }
+
+    document.getElementById('progressBar').style.display='block';
+    document.getElementById('uploadStatus').textContent=`Processing ${rows.length} students…`;
+
+    classResults = [];
+    for (let i=0; i<rows.length; i++) {
+      const row = rows[i];
+      try {
+        const payload = csvRowToPayload(row);
+        const res = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const data = await res.json();
+        classResults.push({
+          name: row['Student_Name'] || row['Name'] || `Student ${i+1}`,
+          prob: Math.round((data.probability||0)*100),
+          label: data.label||'',
+          factors: (data.top_risk_factors||[]).slice(0,2).map(f=>f.replace(/_/g,' ')).join(', ')
+        });
+      } catch {
+        classResults.push({name:row['Student_Name']||`Student ${i+1}`,prob:0,label:'Error',factors:''});
+      }
+      document.getElementById('progressFill').style.width = Math.round((i+1)/rows.length*100)+'%';
+      document.getElementById('uploadStatus').textContent=`Processed ${i+1} of ${rows.length} students…`;
+    }
+
+    document.getElementById('uploadStatus').textContent=`✓ Analysis complete — ${rows.length} students assessed.`;
+    renderHeatmap();
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+  return lines.slice(1).map(line=>{
+    const vals = line.split(',').map(v=>v.trim().replace(/"/g,''));
+    const obj={};
+    headers.forEach((h,i)=>obj[h]=vals[i]||'');
+    return obj;
+  });
+}
+
+function csvRowToPayload(row) {
+  const n = k => parseInt(row[k])||0;
+  const s = k => (row[k]||'').toLowerCase();
+  return {
+    School: row['School']||'GP', Gender: row['Gender']||'M',
+    Age: n('Age'), Address: row['Address']||'U',
+    Family_Size: row['Family_Size']||'GT3', Parental_Status: row['Parental_Status']||'T',
+    Mother_Education: n('Mother_Education'), Father_Education: n('Father_Education'),
+    Mother_Job: row['Mother_Job']||'other', Father_Job: row['Father_Job']||'other',
+    Reason_for_Choosing_School: row['Reason_for_Choosing_School']||'course',
+    Guardian: row['Guardian']||'mother', Travel_Time: n('Travel_Time'),
+    Study_Time: n('Study_Time'), Number_of_Failures: n('Number_of_Failures'),
+    School_Support: s('School_Support'), Family_Support: s('Family_Support'),
+    Extra_Paid_Class: s('Extra_Paid_Class'), Extra_Curricular_Activities: s('Extra_Curricular_Activities'),
+    Attended_Nursery: s('Attended_Nursery')||'yes', Wants_Higher_Education: s('Wants_Higher_Education'),
+    Internet_Access: s('Internet_Access'), In_Relationship: s('In_Relationship'),
+    Family_Relationship: n('Family_Relationship'), Free_Time: n('Free_Time'),
+    Going_Out: n('Going_Out'), Weekend_Alcohol_Consumption: n('Weekend_Alcohol_Consumption'),
+    Weekday_Alcohol_Consumption: n('Weekday_Alcohol_Consumption'),
+    Health_Status: n('Health_Status'), Number_of_Absences: n('Number_of_Absences')
+  };
+}
+
+function renderHeatmap() {
+  document.getElementById('heatmapWrap').classList.remove('hidden');
+  renderStats();
+  renderTiles(classResults);
+}
+
+function renderStats() {
+  const high = classResults.filter(s=>s.prob>=60).length;
+  const med  = classResults.filter(s=>s.prob>=35&&s.prob<60).length;
+  const low  = classResults.filter(s=>s.prob<35).length;
+  document.getElementById('heatmapStats').innerHTML=`
+    <div class="stat-card stat-high"><div class="stat-value">${high}</div><div class="stat-label">🔴 High risk</div></div>
+    <div class="stat-card stat-med"><div class="stat-value">${med}</div><div class="stat-label">🟡 Moderate risk</div></div>
+    <div class="stat-card stat-low"><div class="stat-value">${low}</div><div class="stat-label">🟢 Low risk</div></div>`;
+}
+
+function getTileClass(prob) {
+  if(prob>=60) return 'tile-high';
+  if(prob>=35) return 'tile-med';
+  return 'tile-low';
+}
+
+function getRiskText(prob) {
+  if(prob>=60) return 'High risk';
+  if(prob>=35) return 'Moderate';
+  return 'Low risk';
+}
+
+let sortedResults = [];
+function renderTiles(data) {
+  sortedResults = [...data];
+  const grid = document.getElementById('heatmapGrid');
+  grid.innerHTML='';
+  const filtered = tileFilter==='all' ? sortedResults :
+    tileFilter==='high' ? sortedResults.filter(s=>s.prob>=60) :
+    tileFilter==='med'  ? sortedResults.filter(s=>s.prob>=35&&s.prob<60) :
+    sortedResults.filter(s=>s.prob<35);
+
+  filtered.forEach(s=>{
+    const tc = getTileClass(s.prob);
+    const div=document.createElement('div');
+    div.className='student-tile '+tc;
+    div.innerHTML=`
+      <div class="tile-name">${s.name}</div>
+      <div class="tile-prob">${s.prob}%</div>
+      <div class="tile-label">${getRiskText(s.prob)}</div>
+      ${s.factors?`<div class="tile-factors">⚠ ${s.factors}</div>`:''}`;
+    grid.appendChild(div);
+  });
+}
+
+function filterTiles(f, btn) {
+  tileFilter=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('fa','fh','fm','fl'));
+  btn.classList.add(f==='all'?'fa':f==='high'?'fh':f==='med'?'fm':'fl');
+  renderTiles(sortedResults);
+}
+
+function sortTiles(val) {
+  if(val==='risk-desc') classResults.sort((a,b)=>b.prob-a.prob);
+  else if(val==='risk-asc') classResults.sort((a,b)=>a.prob-b.prob);
+  else classResults.sort((a,b)=>a.name.localeCompare(b.name));
+  renderTiles(classResults);
+}
+</script>
+</body>
+</html>
